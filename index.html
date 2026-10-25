@@ -1,0 +1,692 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <meta name="theme-color" content="#0a0714" />
+    <meta
+      name="description"
+      content="Fruit Slash 3D - game arcade chém hoa quả 3D trên trình duyệt. Vuốt để chém, né bom và phá kỷ lục."
+    />
+    <title>Fruit Slash 3D — Arcade chém hoa quả</title>
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop stop-color='%23ff6b6b'/%3E%3Cstop offset='1' stop-color='%23ffd93d'/%3E%3C/linearGradient%3E%3C/defs%3E%3Ccircle cx='32' cy='34' r='24' fill='url(%23g)'/%3E%3Cpath d='M32 16c2-8 10-10 16-8-2 8-8 12-16 8Z' fill='%237ef0a5'/%3E%3Cpath d='M12 40 52 20' stroke='%23ffffff' stroke-width='5' stroke-linecap='round'/%3E%3C/svg%3E"
+    />
+    <style>
+      /* Lives in <head> so the loading screen paints before the app bundle. */
+      html,
+      body {
+        margin: 0;
+        min-height: 100%;
+        background: #08060f;
+      }
+
+      [hidden] {
+        display: none !important;
+      }
+
+      .boot-screen {
+        position: fixed;
+        inset: 0;
+        z-index: 1000;
+        display: grid;
+        place-items: center;
+        padding: 24px;
+        overflow: hidden;
+        color: #fff8f2;
+        font-family: "Segoe UI", "SF Pro Display", system-ui, -apple-system, sans-serif;
+        background:
+          radial-gradient(900px 700px at 18% 0%, rgba(108, 58, 168, 0.44), transparent 62%),
+          radial-gradient(800px 600px at 92% 18%, rgba(19, 116, 127, 0.3), transparent 60%),
+          radial-gradient(760px 620px at 50% 112%, rgba(196, 58, 96, 0.2), transparent 64%),
+          linear-gradient(160deg, #0b0817 0%, #130b23 44%, #08060f 100%);
+        opacity: 1;
+        visibility: visible;
+        transition: opacity 0.35s ease, visibility 0s linear 0.35s;
+      }
+
+      .boot-screen.is-complete {
+        opacity: 0;
+        visibility: hidden;
+        pointer-events: none;
+      }
+
+      .boot-card {
+        width: min(380px, 100%);
+        text-align: center;
+        transform: translateY(-6px);
+      }
+
+      .boot-emblem {
+        position: relative;
+        width: 66px;
+        height: 66px;
+        margin: 0 auto 22px;
+        border-radius: 50%;
+        background: radial-gradient(circle at 34% 28%, #ffe6a8 0 10%, #ff8a5c 44%, #ff4d7d 100%);
+        box-shadow:
+          0 0 44px rgba(255, 120, 96, 0.35),
+          inset -8px -10px 18px rgba(0, 0, 0, 0.25);
+      }
+
+      .boot-emblem::after {
+        content: "";
+        position: absolute;
+        top: -9px;
+        left: 54%;
+        width: 27px;
+        height: 17px;
+        border-radius: 100% 0 100% 0;
+        background: linear-gradient(135deg, #c9ff9a, #4fa447);
+        transform: rotate(-18deg);
+      }
+
+      .boot-emblem::before {
+        content: "";
+        position: absolute;
+        inset: -11px;
+        border: 2px solid transparent;
+        border-top-color: rgba(126, 232, 250, 0.78);
+        border-right-color: rgba(255, 209, 102, 0.4);
+        border-radius: 50%;
+        animation: boot-spin 1.1s linear infinite;
+      }
+
+      .boot-eyebrow {
+        margin: 0 0 10px;
+        color: #b8a9c9;
+        font-size: 10.5px;
+        font-weight: 800;
+        letter-spacing: 0.32em;
+        text-transform: uppercase;
+      }
+
+      .boot-title {
+        margin: 0;
+        color: #fff8f0;
+        font-size: clamp(34px, 7vw, 46px);
+        font-style: italic;
+        font-weight: 900;
+        letter-spacing: -0.055em;
+        line-height: 0.95;
+      }
+
+      .boot-title__slash {
+        background: linear-gradient(180deg, #fff8c9 0%, #ffd166 34%, #ff8a5c 68%, #ff4d7d 100%);
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+      }
+
+      .boot-progress {
+        height: 7px;
+        margin: 30px auto 13px;
+        overflow: hidden;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.09);
+        box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.4);
+      }
+
+      .boot-progress__fill {
+        display: block;
+        width: 8%;
+        height: 100%;
+        border-radius: inherit;
+        background: linear-gradient(90deg, #7ee8fa, #ffd166 55%, #ff6b6b);
+        box-shadow: 0 0 16px rgba(126, 232, 250, 0.45);
+        transition: width 0.3s ease;
+      }
+
+      .boot-status {
+        margin: 0;
+        color: #fff8f2;
+        font-size: 13px;
+        font-weight: 700;
+      }
+
+      .boot-detail {
+        margin: 7px 0 0;
+        color: #b8a9c9;
+        font-size: 11px;
+        line-height: 1.5;
+      }
+
+      .boot-error {
+        margin-top: 18px;
+        padding: 14px;
+        border: 1px solid rgba(255, 107, 107, 0.35);
+        border-radius: 14px;
+        background: rgba(255, 107, 107, 0.08);
+        text-align: left;
+      }
+
+      .boot-error p {
+        margin: 0 0 10px;
+        color: #ffc2c8;
+        font-size: 11.5px;
+        line-height: 1.5;
+      }
+
+      .boot-retry {
+        min-height: 40px;
+        padding: 0 18px;
+        border: 1px solid rgba(255, 255, 255, 0.18);
+        border-radius: 12px;
+        background: rgba(255, 255, 255, 0.07);
+        color: #fff8f2;
+        font: inherit;
+        font-size: 12px;
+        font-weight: 800;
+        cursor: pointer;
+      }
+
+      .boot-retry:hover {
+        background: rgba(255, 255, 255, 0.12);
+      }
+
+      .boot-retry:focus-visible {
+        outline: 2px solid #7ee8fa;
+        outline-offset: 3px;
+      }
+
+      @keyframes boot-spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .boot-emblem::before {
+          animation: none;
+        }
+
+        .boot-screen,
+        .boot-progress__fill {
+          transition: none;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="boot-screen" class="boot-screen" role="status" aria-live="polite" aria-busy="true">
+      <div class="boot-card">
+        <div class="boot-emblem" aria-hidden="true"></div>
+        <p class="boot-eyebrow">Arcade 3D</p>
+        <h1 class="boot-title">Fruit <span class="boot-title__slash">Slash</span> 3D</h1>
+        <div
+          id="boot-progress"
+          class="boot-progress"
+          role="progressbar"
+          aria-label="Tiến trình tải game"
+          aria-valuemin="0"
+          aria-valuemax="100"
+          aria-valuenow="8"
+        >
+          <span id="boot-progress-fill" class="boot-progress__fill"></span>
+        </div>
+        <p id="boot-status" class="boot-status">Đang tải game…</p>
+        <p id="boot-detail" class="boot-detail">Chuẩn bị cảnh 3D, trái cây và cửa hàng…</p>
+        <div id="boot-error" class="boot-error" hidden>
+          <p id="boot-error-message">Không thể khởi động game.</p>
+          <button id="boot-retry" class="boot-retry" type="button">Thử lại</button>
+        </div>
+      </div>
+    </div>
+    <noscript>
+      <p style="position: fixed; inset: auto 20px 20px; z-index: 1001; margin: 0; padding: 14px; border-radius: 12px; background: #1a1128; color: #fff; font-family: system-ui, sans-serif; text-align: center">
+        Fruit Slash 3D cần JavaScript để chạy. Hãy bật JavaScript rồi tải lại trang.
+      </p>
+    </noscript>
+    <div id="app">
+      <div id="game-container"></div>
+      <div class="vignette" aria-hidden="true"></div>
+      <div id="damage-flash" class="damage-flash" aria-hidden="true"></div>
+
+      <div id="hud" class="hud" hidden>
+        <div class="hud__top">
+          <div class="hud__left">
+            <div class="score-chip glass">
+              <span class="score-chip__label">Điểm</span>
+              <span id="hud-score" class="score-chip__value">0</span>
+            </div>
+            <div class="hud__meta">
+              <span class="pill glass">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M5 20v-6M12 20V8M19 20V4" />
+                </svg>
+                <span id="hud-level">Cấp 1</span>
+              </span>
+              <span class="pill glass">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <circle cx="12" cy="12" r="8.5" />
+                  <path d="M12 7.5V12l3 2" />
+                </svg>
+                <span id="hud-time">00:00</span>
+              </span>
+            </div>
+          </div>
+          <div class="hud__right">
+            <div id="hud-lives" class="lives glass" role="img" aria-label="3 trái tim"></div>
+            <div class="hud__buttons">
+              <button
+                id="hud-sound"
+                class="icon-btn glass"
+                type="button"
+                aria-label="Tắt âm thanh"
+                title="Tắt âm thanh"
+                aria-pressed="true"
+              >
+                <svg class="icon-sound-on" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M4 9.5h3.2L12 5.5v13l-4.8-4H4z" />
+                  <path d="M16 9a4.5 4.5 0 0 1 0 6M18.8 6.4a8 8 0 0 1 0 11.2" />
+                </svg>
+                <svg class="icon-sound-off" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M4 9.5h3.2L12 5.5v13l-4.8-4H4z" />
+                  <path d="m16 9.5 5 5M21 9.5l-5 5" />
+                </svg>
+              </button>
+              <button
+                id="hud-pause"
+                class="icon-btn glass"
+                type="button"
+                aria-label="Tạm dừng"
+                title="Tạm dừng (P)"
+              >
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M8.5 5.5v13M15.5 5.5v13" />
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
+        <div class="hud__notifications">
+          <div id="hud-event-feed" class="event-feed" aria-live="polite"></div>
+          <div id="hud-toast" class="toast" role="status" aria-live="polite"></div>
+        </div>
+        <div id="hud-combo" class="combo" aria-hidden="true">
+          <span id="hud-combo-value" class="combo__value">0</span>
+          <span class="combo__track">
+            <span id="hud-combo-bar" class="combo__bar"></span>
+          </span>
+        </div>
+        <div id="hud-event-active" class="event-active" aria-live="off" hidden></div>
+      </div>
+
+      <section
+        id="screen-start"
+        class="screen screen--start is-active"
+        aria-labelledby="start-title"
+      >
+        <div class="screen-glow screen-glow--one" aria-hidden="true"></div>
+        <div class="screen-glow screen-glow--two" aria-hidden="true"></div>
+        <div class="fruit-orbit" aria-hidden="true">
+          <span class="float-fruit float-fruit--melon"></span>
+          <span class="float-fruit float-fruit--orange"></span>
+          <span class="float-fruit float-fruit--lemon"></span>
+          <span class="float-fruit float-fruit--dragon"></span>
+          <span class="slash-streak slash-streak--one"></span>
+          <span class="slash-streak slash-streak--two"></span>
+        </div>
+
+        <div class="start-card">
+          <p class="eyebrow"><span></span>Arcade 3D<span></span></p>
+          <h1 id="start-title" class="logo" aria-label="Fruit Slash 3D">
+            <span class="logo__word logo__word--fruit">Fruit</span>
+            <span class="logo__slash" aria-hidden="true"></span>
+            <span class="logo__word logo__word--slash">Slash</span>
+            <span class="logo__badge">3D</span>
+          </h1>
+          <p class="tagline">Một nhát chém. Trăm điểm thưởng. Đừng chạm bom.</p>
+
+          <div class="menu-stats">
+            <span class="menu-stat glass">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M8 4h8v5a4 4 0 0 1-8 0z" />
+                <path d="M8 6H5v2a3 3 0 0 0 3 3M16 6h3v2a3 3 0 0 1-3 3M12 13v4M9 20h6" />
+              </svg>
+              <span class="menu-stat__label">Kỷ lục</span>
+              <strong id="start-best-value">0</strong>
+            </span>
+            <span class="menu-stat menu-stat--coins glass">
+              <span class="coin-icon" aria-hidden="true"></span>
+              <span class="menu-stat__label">Coins</span>
+              <strong id="start-coins">0</strong>
+            </span>
+          </div>
+
+          <div class="how-to">
+            <div class="how-to__item">
+              <span class="how-to__icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24">
+                  <rect x="7" y="2.5" width="10" height="16" rx="5" />
+                  <path d="M12 6v4" />
+                </svg>
+              </span>
+              <p>
+                <strong>Kéo hoặc vuốt</strong>
+                <span>Chém trái cây để ghi điểm</span>
+              </p>
+            </div>
+            <div class="how-to__item">
+              <span class="how-to__icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24">
+                  <circle cx="11" cy="14" r="6.5" />
+                  <path d="M14.5 8.5l2-3.5M16.5 5h3M18 3.5v3" />
+                </svg>
+              </span>
+              <p>
+                <strong>Né bom</strong>
+                <span>Chạm bom sẽ mất một trái tim</span>
+              </p>
+            </div>
+            <div class="how-to__item">
+              <span class="how-to__icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24">
+                  <path
+                    d="M12 20.5c-4.6-3.3-8-6.5-8-10.4A4.6 4.6 0 0 1 12 7a4.6 4.6 0 0 1 8 3.1c0 3.9-3.4 7.1-8 10.4Z"
+                  />
+                </svg>
+              </span>
+              <p>
+                <strong>Giữ 3 trái tim</strong>
+                <span>Sống sót càng lâu, độ khó càng cao</span>
+              </p>
+            </div>
+          </div>
+
+          <div class="menu-actions">
+            <button id="btn-start" class="btn btn--primary btn--large" type="button">
+              <span>Bắt đầu chơi</span>
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M5 12h14M13 6l6 6-6 6" />
+              </svg>
+            </button>
+            <div class="menu-actions__row">
+              <button id="btn-start-shop" class="btn btn--ghost" type="button">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M4 9h16l-1.2 11H5.2zM8 9V6.5a4 4 0 0 1 8 0V9" />
+                </svg>
+                Cửa hàng
+              </button>
+              <button id="btn-start-settings" class="btn btn--ghost" type="button">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <circle cx="12" cy="12" r="3.2" />
+                  <path d="M12 3.5v2M12 18.5v2M3.5 12h2M18.5 12h2M6 6l1.4 1.4M16.6 16.6 18 18M18 6l-1.4 1.4M7.4 16.6 6 18" />
+                </svg>
+                Cài đặt
+              </button>
+            </div>
+          </div>
+
+          <p class="start-hint">
+            <span class="key-hint">Nhấn <kbd>Enter</kbd> để bắt đầu</span>
+          </p>
+        </div>
+      </section>
+
+      <section
+        id="screen-pause"
+        class="screen"
+        aria-labelledby="pause-title"
+        hidden
+      >
+        <div class="panel">
+          <span class="panel__badge" aria-hidden="true">
+            <svg viewBox="0 0 24 24">
+              <path d="M8.5 5.5v13M15.5 5.5v13" />
+            </svg>
+          </span>
+          <p class="eyebrow"><span></span>Đã tạm dừng<span></span></p>
+          <h2 id="pause-title">Nghỉ một nhịp</h2>
+          <p class="panel__lead">Thời gian và độ khó đang được đóng băng.</p>
+          <div class="panel__actions">
+            <button id="btn-resume" class="btn btn--primary btn--large" type="button">
+              Tiếp tục chém
+            </button>
+            <div class="panel__row">
+              <button id="btn-pause-restart" class="btn btn--ghost" type="button">
+                Chơi lại
+              </button>
+              <button id="btn-pause-menu" class="btn btn--ghost" type="button">
+                Trang chủ
+              </button>
+            </div>
+          </div>
+          <p class="panel__hint">Nhấn <kbd>P</kbd> hoặc <kbd>Esc</kbd> để tiếp tục</p>
+        </div>
+      </section>
+
+      <section
+        id="screen-over"
+        class="screen"
+        aria-labelledby="over-title"
+        hidden
+      >
+        <div class="panel panel--over">
+          <p class="eyebrow"><span></span>Hết 3 trái tim<span></span></p>
+          <h2 id="over-title">Kết thúc màn chơi</h2>
+          <p class="result-caption">Tổng điểm</p>
+          <p id="final-score" class="final-score">0</p>
+          <p id="new-best" class="new-best" hidden>Kỷ lục mới</p>
+          <div class="result-grid">
+            <div class="result-item">
+              <span>Thời gian</span>
+              <strong id="final-time">00:00</strong>
+            </div>
+            <div class="result-item">
+              <span>Cấp độ</span>
+              <strong id="final-level">1</strong>
+            </div>
+            <div class="result-item">
+              <span>Kỷ lục</span>
+              <strong id="final-best">0</strong>
+            </div>
+          </div>
+
+          <div class="reward-card">
+            <div class="reward-card__top">
+              <span class="coin-icon" aria-hidden="true"></span>
+              <span>Thưởng ván này</span>
+              <strong id="final-coins">+0</strong>
+            </div>
+            <p id="final-lucky" class="reward-lucky" hidden></p>
+            <p class="reward-balance">
+              Số dư mới
+              <strong id="final-balance">0</strong>
+              <span>Coins</span>
+            </p>
+            <p id="final-reward-note" class="reward-note" hidden></p>
+          </div>
+
+          <div class="panel__actions">
+            <button id="btn-restart" class="btn btn--primary btn--large" type="button">
+              Chơi lại
+            </button>
+            <div class="panel__row">
+              <button id="btn-over-shop" class="btn btn--ghost" type="button">
+                Cửa hàng
+              </button>
+              <button id="btn-menu" class="btn btn--ghost" type="button">
+                Trang chủ
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section
+        id="screen-shop"
+        class="screen screen--shop"
+        aria-labelledby="shop-title"
+        hidden
+      >
+        <div class="shop-shell">
+          <header class="shop-header">
+            <div class="shop-header__titles">
+              <p class="eyebrow eyebrow--left"><span></span>Cửa hàng<span></span></p>
+              <h2 id="shop-title">Trang bị &amp; nâng cấp</h2>
+              <p class="shop-header__lead">
+                Mua bằng Coins kiếm từ mỗi ván chém. Vật phẩm đã mua sẽ được lưu lại cho lần chơi sau.
+              </p>
+            </div>
+            <div class="shop-header__side">
+              <div class="coin-balance glass" aria-live="polite">
+                <span class="coin-icon" aria-hidden="true"></span>
+                <span class="coin-balance__label">Coins</span>
+                <strong id="shop-coins">0</strong>
+              </div>
+              <button
+                id="btn-shop-close"
+                class="icon-btn glass shop-close"
+                type="button"
+                aria-label="Đóng cửa hàng"
+                title="Quay lại (Esc)"
+              >
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M15 5l-7 7 7 7" />
+                </svg>
+              </button>
+            </div>
+          </header>
+
+          <div class="shop-toolbar">
+            <label class="shop-search" for="shop-search">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <circle cx="11" cy="11" r="6.5" />
+                <path d="m16 16 4.5 4.5" />
+              </svg>
+              <input
+                id="shop-search"
+                type="search"
+                placeholder="Tìm theo tên hoặc mô tả..."
+                autocomplete="off"
+                spellcheck="false"
+              />
+            </label>
+            <div id="shop-tabs" class="shop-tabs" role="tablist" aria-label="Danh mục vật phẩm"></div>
+          </div>
+
+          <p id="shop-message" class="shop-message" role="status" aria-live="polite"></p>
+
+          <div class="shop-layout">
+            <div class="shop-grid-wrap">
+              <p id="shop-count" class="shop-count"></p>
+              <div id="shop-grid" class="shop-grid"></div>
+              <div id="shop-empty" class="shop-empty" hidden>
+                <span aria-hidden="true">⌕</span>
+                <strong>Không tìm thấy vật phẩm</strong>
+                <p>Thử danh mục khác hoặc từ khóa ngắn hơn.</p>
+              </div>
+            </div>
+
+            <aside id="shop-details" class="shop-details glass" aria-live="polite">
+              <div id="detail-preview" class="detail-preview"></div>
+              <div class="detail-head">
+                <div class="detail-head__text">
+                  <p id="detail-category" class="detail-category"></p>
+                  <h3 id="detail-name"></h3>
+                </div>
+                <span id="detail-rarity" class="rarity"></span>
+              </div>
+              <p id="detail-desc" class="detail-desc"></p>
+              <div id="detail-status" class="detail-status"></div>
+              <p id="detail-effect" class="detail-effect"></p>
+              <div id="detail-actions" class="detail-actions"></div>
+              <p class="detail-note">
+                Xem trước chỉ hiển thị trong khung này, không thay đổi trang bị đang dùng.
+              </p>
+            </aside>
+          </div>
+        </div>
+      </section>
+
+      <section
+        id="screen-settings"
+        class="screen"
+        aria-labelledby="settings-title"
+        hidden
+      >
+        <div class="panel panel--settings">
+          <span class="panel__badge" aria-hidden="true">
+            <svg viewBox="0 0 24 24">
+              <circle cx="12" cy="12" r="3.2" />
+              <path d="M12 3.5v2M12 18.5v2M3.5 12h2M18.5 12h2M6 6l1.4 1.4M16.6 16.6 18 18M18 6l-1.4 1.4M7.4 16.6 6 18" />
+            </svg>
+          </span>
+          <p class="eyebrow"><span></span>Cài đặt<span></span></p>
+          <h2 id="settings-title">Tùy chỉnh trải nghiệm</h2>
+          <p class="panel__lead">Âm thanh được tổng hợp trực tiếp bằng Web Audio, không cần tệp ngoài.</p>
+
+          <div class="settings-list">
+            <div class="settings-row">
+              <div class="settings-row__label">
+                <strong>Âm thanh</strong>
+                <span>Bật hoặc tắt toàn bộ hiệu ứng âm thanh</span>
+              </div>
+              <label class="switch">
+                <input id="settings-sound" type="checkbox" />
+                <span class="switch__track" aria-hidden="true"><span class="switch__thumb"></span></span>
+                <span class="visually-hidden">Bật âm thanh</span>
+              </label>
+            </div>
+            <div class="settings-row settings-row--volume">
+              <div class="settings-row__label">
+                <strong>Âm lượng</strong>
+                <span id="settings-volume-value">70%</span>
+              </div>
+              <input
+                id="settings-volume"
+                type="range"
+                min="0"
+                max="100"
+                step="1"
+                value="70"
+                aria-label="Âm lượng"
+              />
+            </div>
+          </div>
+
+          <div class="settings-stats">
+            <p class="settings-section-title">Thống kê của bạn</p>
+            <div class="settings-stats__grid">
+              <div class="settings-stat"><span>Số ván</span><strong id="settings-stat-games">0</strong></div>
+              <div class="settings-stat"><span>Điểm cao nhất</span><strong id="settings-stat-best">0</strong></div>
+              <div class="settings-stat"><span>Coins kiếm được</span><strong id="settings-stat-earned">0</strong></div>
+              <div class="settings-stat"><span>Coins đã tiêu</span><strong id="settings-stat-spent">0</strong></div>
+              <div class="settings-stat"><span>Trái cây đã chém</span><strong id="settings-stat-fruits">0</strong></div>
+              <div class="settings-stat"><span>Bom đã chém</span><strong id="settings-stat-bombs">0</strong></div>
+            </div>
+          </div>
+
+          <p id="settings-message" class="settings-message" role="status" aria-live="polite"></p>
+
+          <div id="settings-reset-confirm" class="settings-confirm" hidden>
+            <p>
+              Thao tác này xóa toàn bộ Coins, vật phẩm đã mua, nâng cấp, thống kê và kỷ lục.
+              Không thể hoàn tác.
+            </p>
+            <div class="panel__row">
+              <button id="btn-reset-confirm" class="btn btn--danger" type="button">
+                Xóa toàn bộ
+              </button>
+              <button id="btn-reset-cancel" class="btn btn--ghost" type="button">
+                Hủy
+              </button>
+            </div>
+          </div>
+
+          <div class="panel__actions">
+            <button id="btn-reset-data" class="btn btn--danger-ghost" type="button">
+              Đặt lại dữ liệu
+            </button>
+            <button id="btn-settings-close" class="btn btn--primary" type="button">
+              Quay lại
+            </button>
+          </div>
+        </div>
+      </section>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
